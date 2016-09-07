@@ -23,7 +23,12 @@
  *    console.log(r.getArea());   // => 200
  */
 function Rectangle(width, height) {
-    throw new Error('Not implemented');
+    Rectangle.__proto__ = {width: width, height: height, getArea:function(){
+        return this.width * this.height;
+    }};
+    return {width: width, height: height, getArea:function(){
+        return this.width * this.height;
+    }};
 }
 
 
@@ -38,7 +43,7 @@ function Rectangle(width, height) {
  *    { width: 10, height : 20 } => '{"height":10,"width":20}'
  */
 function getJSON(obj) {
-    throw new Error('Not implemented');
+    return JSON.stringify(obj);
 }
 
 
@@ -54,7 +59,16 @@ function getJSON(obj) {
  *
  */
 function fromJSON(proto, json) {
-    throw new Error('Not implemented');
+    var jsonObject = JSON.parse(json);
+    var retObject = Object.create(proto);
+    for(var field in proto.prototype){
+        retObject[field] = proto[field];
+        console.log("proto field:" + field);
+    }
+    for(var field in jsonObject){
+        retObject[field] = jsonObject[field];
+    }
+    return retObject;
 }
 
 
@@ -107,13 +121,28 @@ function fromJSON(proto, json) {
  */
 
 const cssSelectorBuilder = {
-
     element: function(value) {
-        throw new Error('Not implemented');
+        function BaseSelector(elementValue){
+            return {
+                current: elementValue,
+                __proto__: {
+                    prepend: "",
+                    stringify: function () {
+                        return this.prepend + this.current;
+                    }
+                }
+            }
+        };
+        return new BaseSelector(value);
     },
 
     id: function(value) {
-        throw new Error('Not implemented');
+        function IdSelector(elementValue){
+            return BaseSelector(elementValue);
+        };
+        IdSelector[__proto__] = {__proto__: BaseSelector};
+        IdSelector.prototype.prepend = "#";
+        return new IdSelector(value);
     },
 
     class: function(value) {
@@ -133,8 +162,8 @@ const cssSelectorBuilder = {
     },
 
     combine: function(selector1, combinator, selector2) {
-        throw new Error('Not implemented');
-    },
+        return selector1.stringify + combinator + selector2.stringify;
+    }
 };
 
 

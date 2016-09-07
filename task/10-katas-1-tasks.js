@@ -17,8 +17,34 @@
  *  ]
  */
 function createCompassPoints() {
-    throw new Error('Not implemented');
     var sides = ['N','E','S','W'];  // use array of cardinal directions only!
+    var side = 0;
+    while(side < sides.length) {
+        var s1 = sides[side];
+        var s2 = sides[(side+1)%sides.length];
+        if((sides.length-side)%2 == 0) sides.splice(side+1, 0, s1+s2);
+        else sides.splice(side+1, 0, s2+s1);
+        side = side+2;
+    }
+    side = 0;
+    while(side < sides.length){
+        var s1 = sides[side];
+        var s2 = sides[(side+1)%sides.length];
+        if(s1.length < s2.length) sides.splice(side+1, 0, s1+s2);
+        else sides.splice(side+1, 0, s2+s1);
+        side = side+2;
+    }
+    side = 0;
+    while(side < sides.length){
+        var s1 = sides[side];
+        var s2 = sides[(side+1)%sides.length];
+        if(s1.length < s2.length) sides.splice(side+1, 0, s1+'b'+s2.replace(new RegExp(s1, "g"), ""));
+        else sides.splice(side+1, 0, s2+'b'+s1.replace(new RegExp(s2, "g"), ""));
+        side = side+2;
+    }
+    return sides.map(function(current, currentIndex){
+        return { abbreviation : current,   azimuth : currentIndex*11.25 };
+    });
 }
 
 
@@ -56,7 +82,83 @@ function createCompassPoints() {
  *   'nothing to do' => 'nothing to do'
  */
 function* expandBraces(str) {
-    throw new Error('Not implemented');
+    var root = {text:"", children:[], all:true};
+    var current = root;
+    var parents = [];
+    var stack = [];
+    var token = "";
+    var nested = 0;
+    for(var i=0;i<str.length;i++){
+        //console.log(JSON.stringify({stri: str[i], parents:parents, current: current}));
+        if(str[i] == '{') {
+            if(parents.length && (i>0 && str[i-1] != ',')){
+                var newNode = {text: "", children: [], all: true};
+                current.children.push(newNode);
+                parents.push(current);
+                current = newNode;
+            }
+            var newNode = {text: token, children: [], all: false};
+            current.children.push(newNode);
+            parents.push(current);
+            current = newNode;
+            token = "";
+            nested++;
+        }
+        else if(str[i] == '}'){
+            if(token.length || (i>0 && str[i-1] == ','))
+                current.children.push({text:token, children:[], all: false});
+            token = "";
+            current = parents.pop();
+            if(i<str.length-1 && str[i+1] != ',') {
+                current.all = true;
+            }
+            nested--;
+        }
+        else if(str[i] == ','){
+            if(nested) {
+                current.children.push({text: token, children: [], all: false});
+                if(current.all){
+                    current.children = [{text:"", children:current.children, all:true}];
+                    current.all = false;
+                }
+                token = "";
+            }
+            else
+                token += str[i];
+        }
+        else{
+            token += str[i];
+        }
+    }
+    if(token.length) current.children.push({text:token, children:[], all: true});
+    //console.log(JSON.stringify(root, undefined, 2));
+    function multiply(a, b){
+        return a.reduce(function(previous, current){
+            return previous.concat(b.map(function(x){ return current+x;}));
+        }, []);
+    }
+    function flattenTree(tree){
+        if(tree.children.length){
+            if(tree.all) {
+                var ret = tree.children.reduce(function (previous, current) {
+                    return multiply(previous, flattenTree(current));
+                }, [tree.text]);
+                //console.log(JSON.stringify(ret, undefined, 2));
+                return ret;
+            }
+            else{
+                var ret = tree.children.reduce(function(previous, current){
+                    return previous.concat(multiply([tree.text], flattenTree(current)));
+                }, []);
+                //console.log(JSON.stringify(ret, undefined, 2));
+                return ret;
+            }
+        }
+        else return [tree.text];
+    }
+    stack = flattenTree(root);
+    //console.log(stack);
+    while(stack.length) yield stack.pop();
 }
 
 
